@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd">
+	
+	<!-- 配置httpClientConnectionManager连接池 -->
+	<bean id="httpClientConnectionManager" class="org.apache.http.impl.conn.PoolingHttpClientConnectionManager" destroy-method="close">
+		<property name="maxTotal" value="${http.pool.maxTotal}"/>
+		<property name="defaultMaxPerRoute" value="${http.pool.defaultMaxPerRoute}"/>
+	</bean>
+	
+	<!-- 配置 HttpClient构造工厂-->
+	<bean id="httpClientBuilder" class="org.apache.http.impl.client.HttpClientBuilder">
+		<property name="connectionManager" ref="httpClientConnectionManager"/>
+	</bean>
+	
+	<!-- 获取httpClient实例 -->
+	<bean id="httpClient" class="org.apache.http.impl.client.CloseableHttpClient" factory-bean="httpClientBuilder" factory-method="build" scope="prototype"/>
+	
+	<!-- 请求参数配置 -->
+	<bean id="requestConfigBuilder" class="org.apache.http.client.config.RequestConfig.Builder">
+		<property name="connectionRequestTimeout" value="${http.request.connectionRequestTimeout}"/>
+		<property name="connectTimeout" value="${http.request.connectTimeout}"/>
+		<property name="socketTimeout" value="${http.request.socketTimeout}"/>
+		<property name="staleConnectionCheckEnabled" value="${http.request.staleConnectionCheckEnabled}"/>
+	</bean>
+	
+	<!-- 获取requestConfigBuilder实例 -->
+	<bean id="requestConfig" factory-bean="requestConfigBuilder" factory-method="build"></bean>
+	
+	<!-- 定期清理无效连接 -->
+	<bean class="cn.seagen.base.httpclient.IdleConnectionEvictor" destroy-method="shutdown">
+		 <constructor-arg index="0" ref="httpClientConnectionManager"/>
+	</bean>
+</beans>

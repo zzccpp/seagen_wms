@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<!-- 如果配置了<context:component-scan> -->
+	<!-- 那么<context:annotation-config/>标签就可以不用再xml中配置了，因为前者包含了后者 -->
+	<context:annotation-config/>
+
+	<!-- 启动扫描所有的注解类 -->
+	<!-- spring可以自动去扫描base-pack下面或者子包下面的java文件,排除如下两个注解-->
+	<context:component-scan base-package="cn.seagen">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+		<context:exclude-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice"/>
+	</context:component-scan>
+
+	<!-- 开启Sping定时器,配置task:annotation-driven,spring才能识别@Scheduled注解,task:scheduler定义定时器调度线程池-->
+	<task:annotation-driven scheduler="qbScheduler" mode="proxy"/>
+    <task:scheduler id="qbScheduler" pool-size="10"/>
+    <!-- 加入AOP自动为添加切面注解的自动生成代理 -->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    <!-- 该 BeanPostProcessor 将自动对标注 @Autowired 的 Bean 进行注入 --> 
+	<!-- <bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor"/> -->
+	<!-- 加载属性配置文件1 -->
+	<!-- <context:property-placeholder file-encoding="utf-8" ignore-resource-not-found="true"
+	location="classpath:config/druid.properties,classpath:config/maisender.properties,classpath:config/redis.properties"/> -->
+	<!-- 加载属性配置文件2 -->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+    	<property name="fileEncoding" value="utf-8"></property>
+    	<property name="ignoreResourceNotFound" value="true"/>
+        <property name="locations">
+           <list>
+              <value>classpath:config/druid.properties</value>
+              <value>classpath:config/mail.properties</value>
+              <value>classpath:config/redis.properties</value>
+              <value>classpath:config/mq.properties</value>
+              <value>classpath:config/httpclient.properties</value>
+            </list>
+        </property>
+    </bean>
+    <!-- druid数据库连接池配置start -->
+	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+		<property name="url" value="${druid.url}"/>
+		<property name="username" value="${druid.username}"/>
+		<property name="password" value="${druid.password}"/>
+		<property name="initialSize" value="${druid.initialSize}"/>
+		<property name="minIdle" value="${druid.minIdle}"/>
+		<property name="maxActive" value="${druid.maxActive}"/>
+		<property name="maxWait" value="${druid.maxWait}"/>
+		<property name="timeBetweenEvictionRunsMillis" value="${druid.timeBetweenEvictionRunsMillis}"/>
+		<property name="minEvictableIdleTimeMillis" value="${druid.minEvictableIdleTimeMillis}"/>
+		<property name="validationQuery" value="${druid.validationQuery}"/>
+		<property name="testOnBorrow" value="${druid.testOnBorrow}"/>
+		<property name="testOnReturn" value="${druid.testOnReturn}"/>
+		<property name="testWhileIdle" value="${druid.testWhileIdle}"/>
+		<property name="poolPreparedStatements" value="${druid.poolPreparedStatements}"/>
+		<property name="maxPoolPreparedStatementPerConnectionSize" value="${druid.maxPoolPreparedStatementPerConnectionSize}"/>
+		<property name="filters" value="${druid.filters}"/>
+	</bean>
+	<!-- druid数据库连接池配置end -->
+	<bean name="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<constructor-arg ref="dataSource"/>
+	</bean>
+	<!-- 配置事物管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"/>
+	</bean>
+	<!-- 注解方式增加事物 -->
+	<!-- <tx:annotation-driven transaction-manager="transactionManager"/> -->
+	<!-- 配置事务的传播特性 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="delete*" propagation="REQUIRED" read-only="false"/><!-- 默认  rollback-for="java.lang.RuntimeException" -->
+			<tx:method name="insert*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="update*" propagation="REQUIRED" read-only="false"/>
+			<tx:method name="find*" propagation="SUPPORTS" read-only="true"/>
+			<tx:method name="get*" propagation="SUPPORTS" read-only="true"/>
+			<tx:method name="select*" propagation="SUPPORTS" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+	<!-- 配置哪些类的方法需要增加事物,特别注意 execution中的表达式-->
+	<aop:config>
+		<aop:pointcut id="servicePointCut" expression="execution(* cn.seagen.base.service.*.*(..))"/>
+		<aop:advisor pointcut-ref="servicePointCut" advice-ref="txAdvice"/>
+	</aop:config>
+	<!-- 当Spring容器启动完成后执行下面的这个Bean -->
+	<bean class="cn.seagen.base.AfterSpringInitExecute"/>
+	<!-- 导入邮件配置文件 -->
+	<import resource="classpath:config/spring/spring_mail.xml"/>
+	<!-- 导入Redis配置文件 -->
+	<import resource="classpath:config/spring/spring_redis.xml"/>
+	<!-- 导入MQ配置文件 -->
+	<import resource="classpath:config/spring/spring_mq.xml"/>
+	<!-- 导入httpclient配置文件 -->
+	<import resource="classpath:config/spring/spring_httpclient.xml"/>
+	<bean id="springContextUtil" class="cn.seagen.base.utils.SpringContextUtils"/>
+</beans>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+	http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.7.xsd">
+	
+	<description>spring-rabbitmq配置</description>
+	<!-- 配置连接工厂 -->
+	<rabbit:connection-factory id="connectionFactory" host="${rabbitmq.host}" port="${rabbitmq.port}" username="${rabbitmq.username}" password="${rabbitmq.password}"
+	 connection-timeout="${rabbitmq.timeout}" requested-heartbeat="${rabbitmq.heartbeat}"/>
+	
+	<!-- 重试 -->
+	 <bean id="retryTemplate" class="org.springframework.retry.support.RetryTemplate">
+        <property name="backOffPolicy">
+            <bean class="org.springframework.retry.backoff.ExponentialBackOffPolicy">
+                <property name="initialInterval" value="500"/>
+                <property name="multiplier" value="10.0"/>
+                <property name="maxInterval" value="5000"/>
+            </bean>
+        </property>
+    </bean>
+    
+	<!-- 消息对象json转换类 -->
+	<bean id="fastJsonMessageConverter" class="cn.seagen.base.mq.FastJsonMessageConverter"/>
+	
+	<!--通过指定下面的admin信息,当前proceducer中的exchange和queue会在rabbitmq服务器上自动生成 -->
+    <rabbit:admin connection-factory="connectionFactory"/>
+    
+    <!-- 配置queue,name:queue名称,durable:是否为持久的,auto-delete:表示queue在未被使用时是否自动删除 ,其他使用默认--> 
+    <rabbit:queue name="${rabbitmq.jsendqueue}" auto-delete="false" durable="true" auto-declare="true"/><!-- Java发送消息使用队列 -->
+    <rabbit:queue name="${rabbitmq.csendqueue}" auto-delete="false" durable="true" auto-declare="true"/><!-- C++发送消息使用队列 -->
+    <rabbit:queue name="${rabbitmq.jdbfailqueue}" auto-delete="false" durable="true" auto-declare="true"/><!-- Java入库失败后发送消息使用队列 -->
+    
+    <!-- jsend交换器的配置,及绑定的队列-->
+    <rabbit:direct-exchange name="${rabbitmq.jsend}" auto-delete="false" durable="true">
+    	<rabbit:bindings>
+    		<!--key:queue在该direct-exchange中的key值,当消息发送给该direct-exchange中指定key为设置值时，消息将会转发给queue参数指定的消息队列 -->
+    		<rabbit:binding queue="${rabbitmq.jsendqueue}" key="${rabbitmq.jsendqueue}"/>
+    		<rabbit:binding queue="${rabbitmq.jdbfailqueue}" key="${rabbitmq.jdbfailqueue}"/>
+    	</rabbit:bindings>
+    </rabbit:direct-exchange>
+    
+    <!-- csend交换器的配置,及绑定的队列-->
+    <rabbit:direct-exchange name="${rabbitmq.csend}" auto-delete="false" durable="true">
+    	<rabbit:bindings>
+    		<rabbit:binding queue="${rabbitmq.csendqueue}" key="${rabbitmq.csendqueue}"/>
+    	</rabbit:bindings>
+    </rabbit:direct-exchange>
+    
+    <!-- 配置javaTemplate操作模板,exchange:需要操作的交换器对象 --><!-- retry-template="retryTemplate" -->
+    <rabbit:template id="jsendTemplate" connection-factory="connectionFactory"  message-converter="fastJsonMessageConverter" exchange="${rabbitmq.jsend}" queue="${rabbitmq.jsendqueue}" retry-template="retryTemplate"/>
+	
+	 <!-- 配置jdbfailTemplate操作模板,exchange:需要操作的交换器对象 -->
+    <rabbit:template id="jdbfailTemplate" connection-factory="connectionFactory"  message-converter="fastJsonMessageConverter" exchange="${rabbitmq.jsend}" queue="${rabbitmq.jdbfailqueue}" retry-template="retryTemplate"/>
+	
+	<!-- 配置cTemplate操作模板,exchange:需要操作的交换器对象 -->
+    <rabbit:template id="csendTemplate" connection-factory="connectionFactory" message-converter="fastJsonMessageConverter" exchange="${rabbitmq.csend}" queue="${rabbitmq.csendqueue}" retry-template="retryTemplate"/>
+	
+	<!-- 定义消费者监听对象 -->
+	<bean id="cqueueMessageListener" class="cn.seagen.base.mq.CqueueMessageListener"/>
+	<bean id="fqueueMessageListener" class="cn.seagen.base.mq.FqueueMessageListener"/>
+	<!-- <bean id="jqueueMessageListener" class="cn.seagen.base.mq.JqueueMessageListener"/>  -->
+	
+	<!-- 配置消费者监听 -->
+    <rabbit:listener-container connection-factory="connectionFactory" acknowledge="manual">
+		<rabbit:listener queues="${rabbitmq.csendqueue}" ref="cqueueMessageListener"/>
+		<rabbit:listener queues="${rabbitmq.jdbfailqueue}" ref="fqueueMessageListener"/>
+		<!-- <rabbit:listener queues="${rabbitmq.jsendqueue}" ref="jqueueMessageListener"/> -->
+	</rabbit:listener-container>
+</beans>

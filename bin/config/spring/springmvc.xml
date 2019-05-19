@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd">
+	
+	<!-- 扫描handler,不使用默认扫描过滤器,只扫描如下两个注解 -->
+	<context:component-scan base-package="cn.seagen" use-default-filters="false">
+		<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+		<context:include-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice"/>
+	</context:component-scan>
+	 <!-- 加入AOP自动为添加切面注解的自动生成代理 -->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+	<!-- 等同上面两个处理器(处理器映射器&处理器适配器) -->
+	<mvc:annotation-driven>
+		 <mvc:message-converters register-defaults="true">
+            <bean id="fastJsonHttpMessageConverter" class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter">
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>application/json;charset=UTF-8</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:message-converters>
+	</mvc:annotation-driven>
+	<!-- 前端页面控制 -->
+	<!-- jsp页面解析器，当Controller返回XXX字符串时，先通过拦截器，然后该类就会在/WEB-INF/views/目录下，查找XXX.jsp文件 -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/pages/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+	<!-- 自定义拦截器配置 -->
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<!-- 设置拦截所有的请求 -->
+			<mvc:mapping path="/**"/>
+			<!-- 排除拦截的请求 -->
+			<mvc:exclude-mapping path="/login.do"/>
+			<mvc:exclude-mapping path="/loginout.do"/>
+			<bean class="cn.seagen.base.AuthenticationHandlerInterceptor"/>
+		</mvc:interceptor>
+	</mvc:interceptors>
+	<!-- 使用SimpleMappingExceptionResolver来映射异常 -->
+	<bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+		<property name="exceptionAttribute" value="exception"/>  
+		<property name="exceptionMappings">
+			<props>
+				<prop key="java.lang.Exception">base/common/500</prop>
+				<prop key="java.lang.Throwable">base/common/500</prop>
+			</props>
+		</property>
+	</bean>
+</beans>

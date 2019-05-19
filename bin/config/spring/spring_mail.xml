@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-4.1.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.1.xsd">
+	
+	<!--邮件发送服务器 -->
+	<bean id="javaMailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="${mail.host}"/>
+		<property name="port" value="${mail.port}"/>
+		<property name="username" value="${mail.username}"/>
+		<property name="password" value="${mail.password}"/>
+		<property name="defaultEncoding" value="UTF-8"/>
+		<property name="javaMailProperties">
+			<props>
+              <prop key="mail.smtp.auth">true</prop>
+              <!-- 如果是网易邮箱， mail.smtp.starttls.enable 设置为 false-->
+              <prop key="mail.smtp.starttls.enable">false</prop>
+              <prop key="mail.smtp.timeout">25000</prop>
+              <!-- QQ需要走SSL协议端口，163可以使用默认端口25走非协议端口 -->
+              <prop key="mail.smtp.port">${mail.port}</prop>
+              <prop key="mail.smtp.socketFactory.class">javax.net.ssl.SSLSocketFactory</prop>
+            </props>
+		</property>
+	</bean>
+	<!--简单邮件信息 -->
+	<bean id="simpleMailMessage" class="org.springframework.mail.SimpleMailMessage">
+		<property name="from" value="${mail.from}"/>
+		<!-- 配置制定的默认收件人 -->
+		<property name="to" value="${mail.to}"/>
+		<!-- 配置默认的主题 -->
+		<property name="subject" value="${mail.subject}"/>
+    </bean>
+	<!--异步线程执行器 -->
+    <bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">  
+        <property name="corePoolSize" value="1"/>
+        <property name="maxPoolSize" value="2"/>
+    </bean>
+    <!-- 初始化发送服务器 -->
+	<bean id="mailSendService" class="cn.seagen.base.service.MailSendService">
+        <property name="javaMailSender" ref="javaMailSender"/>
+        <property name="taskExecutor" ref="taskExecutor"/>
+        <property name="simpleMailMessage" ref="simpleMailMessage"/>
+    </bean>
+</beans>

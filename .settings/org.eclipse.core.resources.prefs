@@ -1,0 +1,9 @@
+eclipse.preferences.version=1
+encoding//src/config/druid.properties=UTF-8
+encoding//src/config/httpclient.properties=UTF-8
+encoding//src/config/mail.properties=UTF-8
+encoding//src/config/maisender.properties=UTF-8
+encoding//src/config/mq.properties=UTF-8
+encoding//src/config/redis.properties=UTF-8
+encoding/<project>=UTF-8
+encoding/src=UTF-8

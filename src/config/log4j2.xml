@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/2002/xmlspec/dtd/2.10/xmlspec.dtd">
+<!-- 日志级别 trace, debug, info, warn, error, fatal -->
+<!-- status：log4j相关的日志的打印级别，OFF即不打印，其他则按照标准级别配置即可，如 debug -->
+<Configuration status="OFF">
+    <!-- 定义日志存放目录（相对路径） -->
+    <properties>
+        <property name="logPath">D:/logs</property>
+    </properties>
+    <!-- 定义所有的输出器 日志级别  all<debug<info<warn<error<fatal<off-->
+    <Appenders>
+        <!-- 输出到控制台，下面分别是 debug、info、error 级别的配置 -->
+        <Console name="ConsoleDebugLog" target="system_out">
+        	<!-- 控制台只输出level及以上级别的信息(onMatch),其他的直接拒绝(onMismatch) -->
+            <ThresholdFilter level="debug" onMatch="accept" onMismatch="deny"/>
+            <PatternLayout pattern="%d{MM-dd HH:mm:ss.SSS}[%F %L]-[%p]%m%n" />
+        </Console>
+        <!-- debug级别日志,只存debug级别日志 -->
+        <RollingFile name="DeBugRollingFileLog" fileName="${logPath}/scs-debug.log" 
+        filePattern="${logPath}/debug/debug-%d{yyyy-MM-dd}-%i.log.gz"> 
+        	<Filters>
+	            <ThresholdFilter level="info" onMatch="deny" onMismatch="neutral"/>
+	            <ThresholdFilter level="debug" onMatch="accept" onMismatch="deny"/>
+            </Filters>
+            <PatternLayout pattern="%d{MM-dd HH:mm:ss.SSS}[%F %L]-[%p]%m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+          	 	<SizeBasedTriggeringPolicy size="20M" />
+            </Policies>
+           <DefaultRolloverStrategy max="5">
+       	 		<Delete basePath="${logPath}/debug" maxDepth="1">
+                     <IfFileName glob="debug*"/>
+                     <IfLastModified age="30d"/>
+            	</Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+        <!-- info级别日志,只存info级别日志 -->
+        <RollingFile name="InfoRollingFileLog" fileName="${logPath}/scs-info.log" 
+        filePattern="${logPath}/info/info-%d{yyyy-MM-dd}-%i.log.gz"> 
+        	<Filters> 
+	            <ThresholdFilter level="warn" onMatch="deny" onMismatch="neutral"/>
+	            <ThresholdFilter level="info" onMatch="accept" onMismatch="deny"/>
+            </Filters>
+            <PatternLayout pattern="%d{MM-dd HH:mm:ss.SSS}[%F %L]-[%p]%m%n" />
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+          	 	<SizeBasedTriggeringPolicy size="10M" />
+            </Policies>
+            <DefaultRolloverStrategy max="5">
+       	 		<Delete basePath="${logPath}/info" maxDepth="1">
+                     <IfFileName glob="info*"/>
+                     <IfLastModified age="30d"/>
+            	</Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+        <!-- warn级别日志,存放warn级别日志 -->
+        <RollingFile name="WarnRollingFileLog" fileName="${logPath}/scs-warn.log"
+         filePattern="${logPath}/warn/warn-%d{yyyy-MM-dd}-%i.log.gz">
+         	<Filters> 
+	            <ThresholdFilter level="error" onMatch="deny" onMismatch="neutral"/>
+	            <ThresholdFilter level="warn" onMatch="accept" onMismatch="deny"/>
+            </Filters>
+            <PatternLayout pattern="%d{MM-dd HH:mm:ss.SSS}[%F %L]-[%p]%m%n" />
+            <Policies>
+            	<!-- 时基于时间的备份打包,interval精确度为文件生成的精确时间天 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            	<SizeBasedTriggeringPolicy size="20M" />
+            </Policies>
+            <!-- 配置一个文件夹下最多保存几个文件，默认是7个 -->
+            <DefaultRolloverStrategy max="5">
+        		<Delete basePath="${logPath}/warn" maxDepth="1">
+                     <IfFileName glob="warn*"/>
+                     <IfLastModified age="30d"/>
+            	</Delete>    
+            </DefaultRolloverStrategy>  
+        </RollingFile>
+        <!-- error级别日志,存放error,fatal级别日志 -->
+        <RollingFile name="ErrorRollingFileLog" fileName="${logPath}/scs-error.log"
+         filePattern="${logPath}/error/error-%d{yyyy-MM-dd}-%i.log.gz">
+         	<ThresholdFilter level="error" onMatch="accept" onMismatch="deny"/>
+            <PatternLayout pattern="%d{MM-dd HH:mm:ss.SSS}[%F %L]-[%p]%m%n" />
+            <Policies>
+            	<!-- 时基于时间的备份打包,interval精确度为文件生成的精确时间天 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            	<SizeBasedTriggeringPolicy size="10M" />
+            </Policies>
+            <!-- 配置一个文件夹下最多保存几个文件，默认是7个 -->
+            <DefaultRolloverStrategy max="5">
+       	 		<Delete basePath="${logPath}/error" maxDepth="1">
+                     <IfFileName glob="error*"/>
+                     <IfLastModified age="30d"/>
+            	</Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <!-- 项目整体默认日志配置，此处最低级别为 debug -->
+        <asyncRoot level="debug" includeLocation="true">
+		    <AppenderRef ref="ConsoleDebugLog"/>
+            <AppenderRef ref="DeBugRollingFileLog"/>
+            <AppenderRef ref="InfoRollingFileLog"/>
+            <AppenderRef ref="WarnRollingFileLog"/>
+            <AppenderRef ref="ErrorRollingFileLog"/>
+		</asyncRoot>
+    </Loggers>
+</Configuration>
